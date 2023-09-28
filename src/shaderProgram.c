@@ -1,4 +1,5 @@
 #include "shaderProgram.h"
+#include "darray.h"
 
 #include <glad/glad.h>
 
@@ -14,7 +15,6 @@ struct uniform_var {
 struct ShaderProgram {
     unsigned int pId;
     struct uniform_var *uniform_vars;
-    size_t var_count;
 };
 
 const char *readShaderFromFile(const char *file_name);
@@ -22,13 +22,13 @@ const char *readShaderFromFile(const char *file_name);
 ShaderProgram *shaderProgram_create() {
     ShaderProgram *result = malloc(sizeof(struct ShaderProgram));
     result->pId = glCreateProgram();
-    result->uniform_vars = NULL;
-    result->var_count = 0;
+    result->uniform_vars = darray_create(struct uniform_var);
     return result;
 }
 
 void shaderProgram_destroy(ShaderProgram *program) {
     glDeleteProgram(program->pId);
+    free(program);
 }
 
 void shaderProgram_link(ShaderProgram *this) {
@@ -69,16 +69,34 @@ void shaderProgram_attach(ShaderProgram *this, const char *file_name, unsigned i
 }
 
 void shaderProgram_add_uniform(ShaderProgram *this, const char *varName) {
-    this->uniform_vars = realloc(this->uniform_vars, (this->var_count + 1) * sizeof(struct uniform_var));
-    this->uniform_vars[this->var_count].var_name = strdup(varName);
-    this->uniform_vars[this->var_count].value = glGetUniformLocation(this->pId, varName);
-    this->var_count++;
+    struct uniform_var new_uniform = {
+            .var_name = strdup(varName),
+            .value = glGetUniformLocation(this->pId, varName),
+    };
+    darray_push(this->uniform_vars, new_uniform);
 }
 
 void shaderProgram_set_float(ShaderProgram *this, const char *varName, float value) {
-    for (int i = 0; i < this->var_count; ++i) {
+    for (int i = 0; i < darray_length(this->uniform_vars); ++i) {
         if (strcmp(this->uniform_vars[i].var_name, varName) == 0) {
             glUniform1f(this->uniform_vars[i].value, value);
+            return;
+        }
+    }
+}
+
+void shaderProgram_set_vec3(ShaderProgram *this, const char *varName, vec3 value) {
+    for (int i = 0; i < darray_length(this->uniform_vars); ++i) {
+        if (strcmp(this->uniform_vars[i].var_name, varName) == 0) {
+            glUniform3f(this->uniform_vars[i].value, value[0], value[1], value[2]);
+            return;
+        }
+    }
+}
+void shaderProgram_set_vec4(ShaderProgram *this, const char *varName, vec4 value) {
+    for (int i = 0; i < darray_length(this->uniform_vars); ++i) {
+        if (strcmp(this->uniform_vars[i].var_name, varName) == 0) {
+            glUniform4f(this->uniform_vars[i].value, value[0], value[1], value[2], value[3]);
             return;
         }
     }

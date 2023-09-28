@@ -6,7 +6,9 @@ set(PROJECT_INCLUDE_DIR ${PROJECT_DIR}/include)
 set(PROJECT_SOURCE_DIR ${PROJECT_DIR}/src)
 set(PROJECT_SOURCES
         ${PROJECT_SOURCE_DIR}/main.c
-        src/shaderProgram.c
+        ${PROJECT_SOURCE_DIR}/shaderProgram.c
+        ${PROJECT_SOURCE_DIR}/square.c
+        ${PROJECT_SOURCE_DIR}/darray.c
 )
 
 add_subdirectory(lib)
