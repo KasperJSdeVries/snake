@@ -4,9 +4,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+struct uniform_var {
+    char *var_name;
+    int value;
+};
 
 struct ShaderProgram {
     unsigned int pId;
+    struct uniform_var *uniform_vars;
+    size_t var_count;
 };
 
 const char *readShaderFromFile(const char *file_name);
@@ -14,6 +22,8 @@ const char *readShaderFromFile(const char *file_name);
 ShaderProgram *shaderProgram_create() {
     ShaderProgram *result = malloc(sizeof(struct ShaderProgram));
     result->pId = glCreateProgram();
+    result->uniform_vars = NULL;
+    result->var_count = 0;
     return result;
 }
 
@@ -56,6 +66,22 @@ void shaderProgram_attach(ShaderProgram *this, const char *file_name, unsigned i
     glAttachShader(this->pId, shaderId);
 
     glDeleteShader(shaderId);
+}
+
+void shaderProgram_add_uniform(ShaderProgram *this, const char *varName) {
+    this->uniform_vars = realloc(this->uniform_vars, (this->var_count + 1) * sizeof(struct uniform_var));
+    this->uniform_vars[this->var_count].var_name = strdup(varName);
+    this->uniform_vars[this->var_count].value = glGetUniformLocation(this->pId, varName);
+    this->var_count++;
+}
+
+void shaderProgram_set_float(ShaderProgram *this, const char *varName, float value) {
+    for (int i = 0; i < this->var_count; ++i) {
+        if (strcmp(this->uniform_vars[i].var_name, varName) == 0) {
+            glUniform1f(this->uniform_vars[i].value, value);
+            return;
+        }
+    }
 }
 
 const char *readShaderFromFile(const char *file_name) {

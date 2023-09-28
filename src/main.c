@@ -11,6 +11,8 @@ unsigned int vertexArray;
 
 unsigned int elementBuffer;
 
+float movingConstant = 0.0f;
+
 void buildCircle(float radius, int vertex_count, vec3 **out_vertices, unsigned int **out_indices, size_t *index_count) {
     float angle = 360.0f / vertex_count;
 
@@ -38,6 +40,19 @@ void buildCircle(float radius, int vertex_count, vec3 **out_vertices, unsigned i
     }
 }
 
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int modifiers) {
+    if (key == GLFW_KEY_ESCAPE) {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+
+    if (key == GLFW_KEY_A) {
+        movingConstant -= 0.01f;
+    }
+    if (key == GLFW_KEY_D) {
+        movingConstant += 0.01f;
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (!glfwInit()) return -1;
 
@@ -48,6 +63,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    glfwSetKeyCallback(window, key_callback);
     glfwMakeContextCurrent(window);
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
@@ -66,6 +82,7 @@ int main(int argc, char *argv[]) {
     shaderProgram_attach(myProgram, "./shaders/vs.glsl", GL_VERTEX_SHADER);
     shaderProgram_attach(myProgram, "./shaders/fs.glsl", GL_FRAGMENT_SHADER);
     shaderProgram_link(myProgram);
+    shaderProgram_add_uniform(myProgram, "uMoveX");
 
     glGenVertexArrays(1, &vertexArray);
     glGenBuffers(1, &vertexBuffer);
@@ -89,6 +106,8 @@ int main(int argc, char *argv[]) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         shaderProgram_use(myProgram);
+
+        shaderProgram_set_float(myProgram, "uMoveX", movingConstant);
 
         glBindVertexArray(vertexArray);
 
