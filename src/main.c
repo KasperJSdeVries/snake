@@ -1,15 +1,8 @@
-#include <glad/glad.h>
-
-#include <GLFW/glfw3.h>
-
-#include "darray.h"
-#include "shaderProgram.h"
+#include "kinetic/containers/darray.h"
+#include "kinetic/game.h"
+#include "kinetic/graphics/shaderProgram.h"
 #include "square.h"
-#include <stdio.h>
 #include <unistd.h>
-
-unsigned int vertexBuffer;
-unsigned int vertexArray;
 
 const float length = 0.08f;
 float vertices[] = {
@@ -49,6 +42,7 @@ float vertices[] = {
 //}
 
 square **snake_block_list = NULL;
+ShaderProgram *myProgram;
 
 void move_snake() {
     for (int i = 0; i < darray_length(snake_block_list); i++) {
@@ -70,7 +64,7 @@ void draw_snake(ShaderProgram *program) {
         square_get_color(snake_block_list[i], &color);
         shaderProgram_set_vec4(program, "uColor", color);
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        shaderProgram_draw(program);
     }
 }
 
@@ -103,103 +97,65 @@ void add_tail() {
     }
 }
 
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int modifiers) {
-    if (key == GLFW_KEY_ESCAPE) {
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+void game_input_callback(key key) {
+    if (key == KEY_ESCAPE) {
+        exit_game();
     }
 
-    if (action == GLFW_PRESS) {
-        if (darray_length(snake_block_list) != 0) {
-            square *first = snake_block_list[0];
-            if (key == GLFW_KEY_A) {
-                square_set_direction(first, DIR_LEFT);
-            }
-            if (key == GLFW_KEY_D) {
-                square_set_direction(first, DIR_RIGHT);
-            }
-            if (key == GLFW_KEY_W) {
-                square_set_direction(first, DIR_UP);
-            }
-            if (key == GLFW_KEY_S) {
-                square_set_direction(first, DIR_DOWN);
-            }
+    if (darray_length(snake_block_list) != 0) {
+        square *first = snake_block_list[0];
+        if (key == KEY_A) {
+            square_set_direction(first, DIR_LEFT);
         }
-        if (key == GLFW_KEY_SPACE) {
-            add_tail();
+        if (key == KEY_D) {
+            square_set_direction(first, DIR_RIGHT);
         }
+        if (key == KEY_W) {
+            square_set_direction(first, DIR_UP);
+        }
+        if (key == KEY_S) {
+            square_set_direction(first, DIR_DOWN);
+        }
+    }
+    if (key == KEY_SPACE) {
+        add_tail();
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (!glfwInit()) return -1;
-
-    GLFWwindow *window = glfwCreateWindow(800, 800, "Snake", NULL, NULL);
-    if (window == NULL) {
-        fprintf(stderr, "Error: Could not create a window!\n");
-        glfwTerminate();
-        return -1;
-    }
-
-    glfwSetKeyCallback(window, key_callback);
-
-    glfwMakeContextCurrent(window);
-
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        fprintf(stderr, "Error: Failed to initialize GLAD\n");
-        glfwTerminate();
-        return -1;
-    }
-
+void game_setup() {
     snake_block_list = darray_create(square *);
     for (int i = 0; i < 5; ++i) {
         add_tail();
     }
 
-    ShaderProgram *myProgram = shaderProgram_create();
-    shaderProgram_attach(myProgram, "./shaders/vs.glsl", GL_VERTEX_SHADER);
-    shaderProgram_attach(myProgram, "./shaders/fs.glsl", GL_FRAGMENT_SHADER);
+    myProgram = shaderProgram_create();
+    shaderProgram_attach(myProgram, "./shaders/vs.glsl", SHADER_TYPE_VERTEX);
+    shaderProgram_attach(myProgram, "./shaders/fs.glsl", SHADER_TYPE_FRAGMENT);
     shaderProgram_link(myProgram);
 
     shaderProgram_add_uniform(myProgram, "uMove");
     shaderProgram_add_uniform(myProgram, "uColor");
 
-    glGenVertexArrays(1, &vertexArray);
-    glGenBuffers(1, &vertexBuffer);
+    shaderProgram_set_vertices(myProgram, vertices, sizeof(vertices) / sizeof(float));
+}
 
-    glBindVertexArray(vertexArray);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+void game_loop() {
+    shaderProgram_use(myProgram);
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    draw_snake(myProgram);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), NULL);
+    move_snake();
 
-    glEnableVertexAttribArray(0);
+    sleep(1);
+}
 
-    while (!glfwWindowShouldClose(window)) {
-        glClearColor(0.0f, 0.2f, 0.2f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        shaderProgram_use(myProgram);
-
-        glBindVertexArray(vertexArray);
-
-        draw_snake(myProgram);
-
-        move_snake();
-
-        sleep(1);
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
+void game_cleanup() {
     for (int i = 0; i < darray_length(snake_block_list); ++i) {
         square *square;
         darray_pop(snake_block_list, &square);
         square_destroy(square);
     }
 
+
     shaderProgram_destroy(myProgram);
-    glfwTerminate();
-    return 0;
 }
